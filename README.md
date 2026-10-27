@@ -6,6 +6,10 @@ A pasta `web/` tem uma interface de chat (React + Vite) que conversa com esta AP
 login, QR code na tela, lista de conversas, histórico, envio de texto e arquivos e
 atualização em tempo real (mensagens novas e confirmações de leitura).
 
+A conexão com o WhatsApp usa o [WPPConnect](https://github.com/wppconnect-team/wppconnect),
+fork mantido do venom (o venom foi abandonado em 2024 e não funciona mais com o WhatsApp Web atual).
+Os endpoints `/api/killServiceWorker` e `/api/restartService` (exclusivos do venom) foram removidos.
+
 A sessão do WhatsApp sobe em segundo plano: a API responde imediatamente e o QR
 aparece na interface (e continua no terminal).
 
@@ -39,7 +43,7 @@ Observações:
 
 ### Deploy 24/7 (Railway, Oracle Cloud, Render, VPS...)
 
-> **Não funciona na Vercel** (nem em outro serviço *serverless*): o venom mantém um
+> **Não funciona na Vercel** (nem em outro serviço *serverless*): o WPPConnect mantém um
 > Chrome aberto o tempo todo segurando a sessão do WhatsApp, e funções serverless são
 > encerradas segundos depois de cada requisição. Use um serviço que rode um container
 > continuamente.
@@ -66,7 +70,7 @@ No **Railway** (pago, mais simples):
 | `TRUST_PROXY` | não | Quantos proxies existem na frente da API (o Dockerfile já define `1`, correto para Railway/Render). |
 | `ALLOWED_ORIGINS` | não | Endereços públicos de onde a interface é aberta, separados por vírgula, quando um proxy reescreve o `Host` (ex.: `https://chat.meudominio.com`). O Codespaces é detectado sozinho. |
 | `AUTH_DISABLED` | não | `true` desliga o login. **Somente para desenvolvimento local.** |
-| `WHATSAPP_SESSION_NAME` | não | Nome da sessão do venom (padrão `sessionName`). |
+| `WHATSAPP_SESSION_NAME` | não | Nome da sessão do WhatsApp (padrão `sessionName`). |
 | `WHATSAPP_AUTO_CLOSE` | não | ms até desistir de esperar o QR; padrão `0` = nunca. |
 | `PORT` / `WHATSAPP_API_PORT` | não | Porta HTTP (padrão `3000`). |
 

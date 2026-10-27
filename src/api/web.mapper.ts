@@ -1,6 +1,6 @@
 /**
- * Turns the (huge) venom objects into the small shapes the web chat needs.
- * venom is not consistent: ids can be either a string or an Id object.
+ * Turns the (huge) WPPConnect objects into the small shapes the web chat needs.
+ * WhatsApp is not consistent: ids can be either a string or an Id object.
  */
 
 export interface WebChat {

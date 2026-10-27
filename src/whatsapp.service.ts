@@ -1,4 +1,4 @@
-import {Message, Whatsapp} from "venom-bot";
+import {Message, Whatsapp} from "@wppconnect-team/wppconnect";
 import {Injectable, Logger} from "@nestjs/common";
 import * as path from "path";
 import {WhatsappConfigService} from "./config.service";

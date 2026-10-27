@@ -1,6 +1,6 @@
-import {Controller, Get, Post} from '@nestjs/common';
+import {Controller, Get} from '@nestjs/common';
 import {ApiTags} from "@nestjs/swagger";
-import {Whatsapp} from "venom-bot";
+import {Whatsapp} from "@wppconnect-team/wppconnect";
 import {WhatsappSessionService} from "../session.service";
 
 
@@ -12,16 +12,6 @@ export class DeviceController {
 
     private get whatsapp(): Whatsapp {
         return this.session.client
-    }
-
-    @Post('/killServiceWorker')
-    killServiceWorker() {
-        return this.whatsapp.killServiceWorker()
-    }
-
-    @Post('/restartService')
-    restartService() {
-        return this.whatsapp.restartService()
     }
 
     @Get('/getHostDevice')

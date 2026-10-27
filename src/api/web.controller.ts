@@ -1,6 +1,6 @@
 import {BadRequestException, Body, Controller, Get, MessageEvent, Param, Post, Req, Sse} from '@nestjs/common';
 import {ApiBody, ApiConsumes, ApiOperation, ApiTags} from "@nestjs/swagger";
-import {Whatsapp} from "venom-bot";
+import {Whatsapp} from "@wppconnect-team/wppconnect";
 import {Request} from "express";
 import {concat, interval, merge, Observable, of} from "rxjs";
 import {map} from "rxjs/operators";
@@ -9,6 +9,7 @@ import {toWebAck, toWebChat, toWebMessage} from "./web.mapper";
 import {SendChatFile, SendChatMessage} from "./web.dto";
 
 const KEEP_ALIVE_MS = 25000
+const MESSAGES_PER_CHAT = 100
 
 /**
  * Endpoints used by the web chat (web/ folder).
@@ -51,7 +52,7 @@ export class WebController {
     @Get('/chats')
     @ApiOperation({summary: 'List chats, most recent first'})
     async getChats() {
-        const chats = await this.whatsapp.getAllChats()
+        const chats = await this.whatsapp.listChats()
         return chats
             .map(toWebChat)
             .filter((chat) => chat.id && !chat.id.endsWith('@broadcast'))
@@ -59,9 +60,9 @@ export class WebController {
     }
 
     @Get('/chats/:chatId/messages')
-    @ApiOperation({summary: 'Messages loaded for a chat, oldest first'})
+    @ApiOperation({summary: `Last ${MESSAGES_PER_CHAT} messages of a chat, oldest first`})
     async getMessages(@Param('chatId') chatId: string) {
-        const messages = await this.whatsapp.getAllMessagesInChat(chatId, true, false)
+        const messages = await this.whatsapp.getMessages(chatId, {count: MESSAGES_PER_CHAT})
         return messages.map(toWebMessage).sort((a, b) => a.timestamp - b.timestamp)
     }
 
@@ -71,10 +72,7 @@ export class WebController {
         if (!message.text || !message.text.trim()) {
             throw new BadRequestException('text is required')
         }
-        if (message.replyTo) {
-            return this.whatsapp.reply(chatId, message.text, message.replyTo)
-        }
-        return this.whatsapp.sendText(chatId, message.text)
+        return this.whatsapp.sendText(chatId, message.text, message.replyTo ? {quotedMsg: message.replyTo} : {})
     }
 
     @Post('/chats/:chatId/files')

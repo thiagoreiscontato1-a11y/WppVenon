@@ -1,6 +1,5 @@
 import {Injectable, Logger, OnApplicationShutdown, OnModuleInit, ServiceUnavailableException} from "@nestjs/common";
-import * as venom from "venom-bot";
-import {Whatsapp} from "venom-bot";
+import {create, Whatsapp} from "@wppconnect-team/wppconnect";
 import {Observable, Subject} from "rxjs";
 import {WhatsappConfigService} from "./config.service";
 
@@ -8,7 +7,7 @@ export type SessionStatus = 'starting' | 'qr' | 'connected' | 'disconnected' | '
 
 export interface SessionState {
     status: SessionStatus
-    // Last raw status reported by venom (isLogged, qrReadSuccess, desconnectedMobile...)
+    // Last raw status reported by WPPConnect (isLogged, qrReadSuccess, disconnectedMobile...)
     detail: string | null
     // QR code as a data URL (data:image/png;base64,...) while status === 'qr'
     qr: string | null
@@ -19,10 +18,10 @@ export interface SessionEvent {
     data: any
 }
 
-const DISCONNECTED_STATUSES = ['browserClose', 'autocloseCalled', 'desconnectedMobile', 'deleteToken', 'noOpenBrowser']
+const DISCONNECTED_STATUSES = ['browserClose', 'autocloseCalled', 'disconnectedMobile', 'serverClose']
 
 /**
- * Owns the venom client. The client is created in background so the HTTP server
+ * Owns the WPPConnect client. The client is created in background so the HTTP server
  * is available right away (the web chat needs it to show the QR code).
  */
 @Injectable()
@@ -95,13 +94,14 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
 
     private start() {
         this.log.log('Starting WhatsApp session...', 'WhatsappSessionService')
-        // Called as venom.create(): venom 4.3 reads `this.session` inside create()
-        venom.create(this.config.session_name,
-            (base64Qr, asciiQR) => {
+        const chromePath = process.env.CHROME_PATH
+        create({
+            session: this.config.session_name,
+            catchQR: (base64Qr, asciiQR) => {
                 console.log(asciiQR);
                 this.setState({status: 'qr', qr: base64Qr})
             },
-            (statusFind) => {
+            statusFind: (statusFind) => {
                 console.log(statusFind);
                 const patch: Partial<SessionState> = {detail: statusFind}
                 if (DISCONNECTED_STATUSES.includes(statusFind)) {
@@ -110,19 +110,21 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
                 }
                 this.setState(patch)
             },
-            {
-                headless: true,
-                multidevice: true,
-                devtools: false,
-                debug: false,
-                logQR: true,
-                browserArgs: [
-                    '--no-sandbox'
-                ],
-                // 0 = never close while waiting for the QR scan (the web chat shows it)
-                autoClose: this.config.auto_close,
-            }
-        ).then((client) => {
+            headless: true,
+            devtools: false,
+            debug: false,
+            logQR: true,
+            browserArgs: [
+                '--no-sandbox'
+            ],
+            puppeteerOptions: chromePath ? {executablePath: chromePath} : {},
+            // 0 = never close while waiting for the QR scan (the web chat shows it)
+            autoClose: this.config.auto_close,
+            deviceName: 'WppVenon',
+            disableWelcome: true,
+            updatesLog: false,
+            disableGoogleAnalytics: true,
+        }        ).then((client) => {
             this.whatsapp = client
             this.setState({status: 'connected', qr: null})
             this.log.log('WhatsApp session connected', 'WhatsappSessionService')

@@ -1,6 +1,6 @@
 import {Controller, Get, Res} from '@nestjs/common';
 import {ApiTags} from "@nestjs/swagger";
-import {Whatsapp} from "venom-bot";
+import {Whatsapp} from "@wppconnect-team/wppconnect";
 import {WhatsappSessionService} from "../session.service";
 import {Readable} from "stream";
 import {Response} from 'express';

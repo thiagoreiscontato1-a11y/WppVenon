@@ -10,7 +10,7 @@ import {
     MessageReply,
     MessageText
 } from "./all.dto";
-import {Whatsapp} from "venom-bot";
+import {Whatsapp} from "@wppconnect-team/wppconnect";
 import {WhatsappSessionService} from "../session.service";
 
 @Controller('api')
