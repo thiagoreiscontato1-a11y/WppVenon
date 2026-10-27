@@ -1,3 +1,5 @@
+import {Whatsapp} from "@wppconnect-team/wppconnect";
+
 /**
  * Turns the (huge) WPPConnect objects into the small shapes the web chat needs.
  * WhatsApp is not consistent: ids can be either a string or an Id object.
@@ -46,19 +48,32 @@ export function serializeId(id: any): string {
     return typeof id === 'string' ? id : (id._serialized || '')
 }
 
-export function toWebChat(chat: any): WebChat {
-    const contact = chat.contact || {}
-    const id = serializeId(chat.id)
-    return {
-        id,
-        name: chat.name || contact.name || contact.formattedName || contact.pushname || id.split('@')[0],
-        isGroup: Boolean(chat.isGroup),
-        unreadCount: chat.unreadCount || 0,
-        timestamp: chat.t || 0,
-        archived: Boolean(chat.archive),
-        pinned: Boolean(chat.pin),
-        picture: contact.profilePicThumbObj?.eurl || null,
-    }
+/**
+ * Lists the chats inside WhatsApp Web's page, returning only what the web chat needs.
+ * The serialized chats from WPPConnect have no usable name anymore (WhatsApp Web keeps it in
+ * formattedTitle, the title its own UI shows) and carry every group participant, which is slow.
+ */
+export async function listWebChats(client: Whatsapp): Promise<WebChat[]> {
+    return client.page.evaluate(async () => {
+        // Runs in the browser, where WPPConnect injected wa-js as the WPP global
+        const WPP = (globalThis as any).WPP
+        const chats: any[] = await WPP.chat.list()
+        return chats.map((chat) => {
+            const id: string = chat.id._serialized
+            const picture = WPP.whatsapp.ProfilePicThumbStore?.get(chat.id)
+            return {
+                id,
+                name: chat.formattedTitle || chat.name || chat.contact?.formattedName
+                    || chat.groupMetadata?.subject || id.split('@')[0],
+                isGroup: Boolean(chat.isGroup),
+                unreadCount: Math.max(chat.unreadCount || 0, 0),
+                timestamp: chat.t || 0,
+                archived: Boolean(chat.archive),
+                pinned: Boolean(chat.pin),
+                picture: picture?.eurl || null,
+            }
+        })
+    })
 }
 
 export function toWebMessage(message: any): WebMessage {

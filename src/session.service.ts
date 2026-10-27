@@ -1,5 +1,6 @@
 import {Injectable, Logger, OnApplicationShutdown, OnModuleInit, ServiceUnavailableException} from "@nestjs/common";
 import {create, Whatsapp} from "@wppconnect-team/wppconnect";
+import {puppeteerConfig} from "@wppconnect-team/wppconnect/dist/config/puppeteer.config";
 import {Observable, Subject} from "rxjs";
 import {WhatsappConfigService} from "./config.service";
 
@@ -20,6 +21,11 @@ export interface SessionEvent {
 
 const DISCONNECTED_STATUSES = ['browserClose', 'autocloseCalled', 'disconnectedMobile', 'serverClose']
 
+// After a connected session drops (e.g. the browser crashed), start it again by itself
+const AUTO_RESTART_DELAY_MS = 5000
+const MAX_AUTO_RESTARTS = 5
+const CLOSE_TIMEOUT_MS = 10000
+
 /**
  * Owns the WPPConnect client. The client is created in background so the HTTP server
  * is available right away (the web chat needs it to show the QR code).
@@ -30,6 +36,9 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
     private readyCallbacks: ((client: Whatsapp) => void)[] = []
     private readonly events = new Subject<SessionEvent>()
     private state: SessionState = {status: 'starting', detail: null, qr: null}
+    private wasConnected = false
+    private autoRestarts = 0
+    private autoRestartTimer: NodeJS.Timeout | null = null
 
     constructor(
         private config: WhatsappConfigService,
@@ -76,7 +85,10 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
         if (this.whatsapp) {
             const client = this.whatsapp
             this.whatsapp = null
-            await client.close().catch((error) => this.log.warn(`Error closing the client: ${error}`, 'WhatsappSessionService'))
+            // A crashed browser may never answer close()
+            const timeout = new Promise((resolve) => setTimeout(resolve, CLOSE_TIMEOUT_MS))
+            await Promise.race([client.close(), timeout])
+                .catch((error) => this.log.warn(`Error closing the client: ${error}`, 'WhatsappSessionService'))
         }
         this.setState({status: 'starting', qr: null, detail: null})
         this.start()
@@ -90,6 +102,22 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
     private setState(patch: Partial<SessionState>) {
         this.state = {...this.state, ...patch}
         this.emit({type: 'status', data: this.getState()})
+        if (patch.status === 'disconnected' || patch.status === 'error') {
+            this.scheduleAutoRestart()
+        }
+    }
+
+    private scheduleAutoRestart() {
+        if (!this.wasConnected || this.autoRestartTimer || this.autoRestarts >= MAX_AUTO_RESTARTS) {
+            return
+        }
+        this.autoRestarts++
+        this.log.warn(`Session dropped, restarting in ${AUTO_RESTART_DELAY_MS / 1000}s ` +
+            `(attempt ${this.autoRestarts}/${MAX_AUTO_RESTARTS})`, 'WhatsappSessionService')
+        this.autoRestartTimer = setTimeout(() => {
+            this.autoRestartTimer = null
+            this.restart()
+        }, AUTO_RESTART_DELAY_MS)
     }
 
     private start() {
@@ -114,9 +142,9 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
             devtools: false,
             debug: false,
             logQR: true,
-            browserArgs: [
-                '--no-sandbox'
-            ],
+            // Keep WPPConnect's defaults (e.g. --disable-dev-shm-usage, without it Chromium
+            // crashes in containers) and add --no-sandbox, needed when running in Docker
+            browserArgs: [...puppeteerConfig.chromiumArgs, '--no-sandbox'],
             puppeteerOptions: chromePath ? {executablePath: chromePath} : {},
             // 0 = never close while waiting for the QR scan (the web chat shows it)
             autoClose: this.config.auto_close,
@@ -126,6 +154,8 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
             disableGoogleAnalytics: true,
         }        ).then((client) => {
             this.whatsapp = client
+            this.wasConnected = true
+            this.autoRestarts = 0
             this.setState({status: 'connected', qr: null})
             this.log.log('WhatsApp session connected', 'WhatsappSessionService')
             this.registerListeners(client)
@@ -146,6 +176,9 @@ export class WhatsappSessionService implements OnModuleInit, OnApplicationShutdo
     }
 
     onApplicationShutdown(signal?: string): any {
+        if (this.autoRestartTimer) {
+            clearTimeout(this.autoRestartTimer)
+        }
         this.events.complete()
         if (this.whatsapp) {
             this.log.log('Close a browser...', 'WhatsappSessionService')

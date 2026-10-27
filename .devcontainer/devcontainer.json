@@ -1,6 +1,9 @@
 {
   "name": "WppVenon",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "runArgs": [
+    "--shm-size=1g"
+  ],
   "hostRequirements": {
     "cpus": 2,
     "memory": "8gb"
@@ -13,7 +16,9 @@
   },
   "postCreateCommand": "bash scripts/codespace-setup.sh",
   "postAttachCommand": "bash scripts/codespace-start.sh",
-  "forwardPorts": [3000],
+  "forwardPorts": [
+    3000
+  ],
   "portsAttributes": {
     "3000": {
       "label": "WppVenon",

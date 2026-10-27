@@ -5,11 +5,11 @@ import {Request} from "express";
 import {concat, interval, merge, Observable, of} from "rxjs";
 import {map} from "rxjs/operators";
 import {SessionEvent, WhatsappSessionService} from "../session.service";
-import {toWebAck, toWebChat, toWebMessage} from "./web.mapper";
+import {listWebChats, toWebAck, toWebMessage} from "./web.mapper";
 import {SendChatFile, SendChatMessage} from "./web.dto";
 
 const KEEP_ALIVE_MS = 25000
-const MESSAGES_PER_CHAT = 100
+const MESSAGES_PER_CHAT = 50
 
 /**
  * Endpoints used by the web chat (web/ folder).
@@ -52,10 +52,10 @@ export class WebController {
     @Get('/chats')
     @ApiOperation({summary: 'List chats, most recent first'})
     async getChats() {
-        const chats = await this.whatsapp.listChats()
+        const chats = await listWebChats(this.whatsapp)
         return chats
-            .map(toWebChat)
-            .filter((chat) => chat.id && !chat.id.endsWith('@broadcast'))
+            // Status updates and channels are not conversations
+            .filter((chat) => chat.id && !chat.id.endsWith('@broadcast') && !chat.id.endsWith('@newsletter'))
             .sort((a, b) => b.timestamp - a.timestamp)
     }
 
