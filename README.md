@@ -9,14 +9,44 @@ atualização em tempo real (mensagens novas e confirmações de leitura).
 A sessão do WhatsApp sobe em segundo plano: a API responde imediatamente e o QR
 aparece na interface (e continua no terminal).
 
-### Deploy (Railway, Render, VPS...)
+### Testar grátis no GitHub Codespaces (sem instalar nada)
+
+O repositório já vem configurado para o Codespaces: ele instala tudo, cria uma senha
+aleatória e sobe o sistema sozinho.
+
+1. No GitHub, abra o repositório na branch desejada → botão **Code** → aba **Codespaces** →
+   **Create codespace on ...**.
+2. Espere a instalação terminar (na primeira vez leva alguns minutos). Quando ela acaba,
+   aparece um terminal com o endereço, o usuário e a senha:
+   ```
+    WppVenon no ar!
+    Abra: https://SEU-CODESPACE-3000.app.github.dev/
+    Usuário: admin
+    Senha:   ...
+   ```
+   (Para ver a senha de novo: `cat .env`.)
+3. Abra o endereço, faça login e escaneie o QR com o WhatsApp.
+
+Observações:
+- O plano gratuito dá 60 horas/mês nesta máquina. O Codespace **para sozinho** depois de
+  30 minutos sem uso do editor (dá para aumentar até 4 h em *github.com/settings/codespaces →
+  Default idle timeout*). Ao reabrir, o sistema sobe de novo e a sessão do WhatsApp continua salva.
+- A porta fica **privada** por padrão: só você, logado no GitHub, consegue abrir o endereço.
+- Depois de atualizar o código (`git pull`), rode `bash scripts/codespace-start.sh --rebuild`.
+- Logs: `tail -f /tmp/wppvenon.log`.
+- Se preferir definir a senha você mesmo, crie os secrets `ADMIN_USER`, `ADMIN_PASSWORD` e
+  `SESSION_SECRET` em *github.com/settings/codespaces* antes de criar o Codespace.
+
+### Deploy 24/7 (Railway, Oracle Cloud, Render, VPS...)
 
 > **Não funciona na Vercel** (nem em outro serviço *serverless*): o venom mantém um
 > Chrome aberto o tempo todo segurando a sessão do WhatsApp, e funções serverless são
 > encerradas segundos depois de cada requisição. Use um serviço que rode um container
 > continuamente.
 
-O projeto tem um `Dockerfile` pronto (API + interface + Chromium). No **Railway**:
+O projeto tem um `Dockerfile` pronto (API + interface + Chromium). Opção gratuita para
+deixar no ar o tempo todo: VM *Always Free* da **Oracle Cloud** (pede cartão só para verificação).
+No **Railway** (pago, mais simples):
 
 1. *New Project → Deploy from GitHub repo* e escolha este repositório/branch.
 2. Em *Variables*, configure pelo menos `ADMIN_USER`, `ADMIN_PASSWORD` e `SESSION_SECRET` (tabela abaixo).
@@ -34,6 +64,7 @@ O projeto tem um `Dockerfile` pronto (API + interface + Chromium). No **Railway*
 | `SESSION_TTL_HOURS` | não | Duração do login em horas (padrão `12`). |
 | `API_TOKEN` | não | Token (mín. 32 caracteres) para scripts/integrações, enviado no cabeçalho `X-VENOM-TOKEN` ou `Authorization: Bearer`. |
 | `TRUST_PROXY` | não | Quantos proxies existem na frente da API (o Dockerfile já define `1`, correto para Railway/Render). |
+| `ALLOWED_ORIGINS` | não | Endereços públicos de onde a interface é aberta, separados por vírgula, quando um proxy reescreve o `Host` (ex.: `https://chat.meudominio.com`). O Codespaces é detectado sozinho. |
 | `AUTH_DISABLED` | não | `true` desliga o login. **Somente para desenvolvimento local.** |
 | `WHATSAPP_SESSION_NAME` | não | Nome da sessão do venom (padrão `sessionName`). |
 | `WHATSAPP_AUTO_CLOSE` | não | ms até desistir de esperar o QR; padrão `0` = nunca. |

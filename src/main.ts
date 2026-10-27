@@ -20,7 +20,7 @@ async function bootstrap() {
         app.set('trust proxy', config.trust_proxy);
     }
     // Before everything else, so nothing (not even uploads) is processed without login
-    app.use(authMiddleware(app.get(AuthService)));
+    app.use(authMiddleware(app.get(AuthService), config.allowed_origins));
     app.use(fileUpload({
         limits: {fileSize: MAX_UPLOAD_BYTES},
         abortOnLimit: true,

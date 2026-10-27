@@ -87,6 +87,21 @@ export class WhatsappConfigService {
         return Number(this.configService.get('TRUST_PROXY', 0))
     }
 
+    // Public URLs the web chat is opened from when a proxy changes the Host header (e.g. https://chat.example.com)
+    get allowed_origins(): string[] {
+        const origins = this.configService.get('ALLOWED_ORIGINS', '')
+            .split(',')
+            .map((origin) => origin.trim().replace(/\/$/, ''))
+            .filter(Boolean)
+        // GitHub Codespaces forwarded port: https://<codespace>-<port>.app.github.dev
+        const codespace = this.configService.get('CODESPACE_NAME')
+        const domain = this.configService.get('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')
+        if (codespace && domain) {
+            origins.push(`https://${codespace}-${this.port}.${domain}`)
+        }
+        return origins
+    }
+
     get mimetypes(): string[] | null {
         const types = this.configService.get('WHATSAPP_FILES_MIMETYPES', "")
         return types ? types.split(',') : null

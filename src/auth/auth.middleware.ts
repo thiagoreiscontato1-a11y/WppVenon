@@ -49,9 +49,9 @@ function apiToken(req: Request): string | undefined {
 /**
  * Browsers always send Origin on cross-site POST/PUT/DELETE: reject the ones from other sites (CSRF).
  */
-function isCrossSite(req: Request): boolean {
+function isCrossSite(req: Request, allowedOrigins: string[]): boolean {
     const origin = req.headers.origin
-    if (!origin || SAFE_METHODS.includes(req.method)) {
+    if (!origin || SAFE_METHODS.includes(req.method) || allowedOrigins.includes(origin)) {
         return false
     }
     let host: string
@@ -79,14 +79,14 @@ function setSecurityHeaders(req: Request, res: Response) {
 /**
  * Express middleware that runs before every route (API, Swagger, static files).
  */
-export function authMiddleware(auth: AuthService) {
+export function authMiddleware(auth: AuthService, allowedOrigins: string[] = []) {
     return (req: Request, res: Response, next: NextFunction) => {
         setSecurityHeaders(req, res)
 
         if (req.path === '/') {
             return res.redirect('/app/')
         }
-        if (isCrossSite(req)) {
+        if (isCrossSite(req, allowedOrigins)) {
             return res.status(403).json({statusCode: 403, message: 'Cross-site request blocked'})
         }
         if (!auth.enabled || req.path === '/app' || req.path.startsWith('/app/') || PUBLIC_PATHS.includes(req.path)) {
