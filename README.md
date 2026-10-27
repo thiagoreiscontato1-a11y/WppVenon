@@ -1,5 +1,46 @@
 # WhatsApp API Free
 
+## Chat web (estilo WhatsApp Web)
+
+A pasta `web/` tem uma interface de chat (React + Vite) que conversa com esta API:
+QR code na tela, lista de conversas, histórico, envio de texto e arquivos e
+atualização em tempo real (mensagens novas e confirmações de leitura).
+
+```bash
+# 1. API (raiz do projeto)
+npm install
+npm start                 # http://localhost:3000 (Swagger)
+
+# 2. Interface, em modo desenvolvimento (outro terminal)
+npm run web:install
+npm run web:dev           # http://localhost:5173/app/
+```
+
+Para usar sem o servidor do Vite: `npm run web:build` e abra http://localhost:3000/app/
+(a própria API serve o build).
+
+A sessão do WhatsApp agora sobe em segundo plano: a API responde imediatamente e o QR
+aparece na interface (e continua no terminal).
+
+Endpoints usados pela interface (ids completos: `5511999999999@c.us` ou `...@g.us` para grupos):
+
+| Método | Rota | Descrição |
+| ------ | ---- | --------- |
+| GET | `/api/session` | Status da sessão e QR code |
+| POST | `/api/session/restart` | Reinicia a sessão após erro/desconexão |
+| GET | `/api/events` | Server-Sent Events: `status`, `message`, `ack` |
+| GET | `/api/chats` | Conversas, mais recentes primeiro |
+| GET | `/api/chats/:chatId/messages` | Mensagens carregadas da conversa |
+| POST | `/api/chats/:chatId/messages` | Envia texto `{text, replyTo?}` |
+| POST | `/api/chats/:chatId/files` | Envia arquivo (multipart, campo `file`, `caption` opcional) |
+| POST | `/api/chats/:chatId/seen` | Marca como lida |
+
+Variáveis de ambiente novas: `WHATSAPP_SESSION_NAME` (padrão `sessionName`) e
+`WHATSAPP_AUTO_CLOSE` (ms até desistir de esperar o QR; padrão `0` = nunca).
+
+> ⚠️ A API não tem autenticação: qualquer pessoa que alcance a porta 3000 pode ler e
+> enviar mensagens. Mantenha-a apenas em `localhost`/rede interna até adicionarmos login.
+
 WhatsApp venom API that you can configure in a click! It's really Free! :)
 
 The project is an HTTP wrapper around https://github.com/orkestral/venom, so we can also support these methods:

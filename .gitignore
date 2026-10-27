@@ -1,0 +1,8 @@
+node_modules/
+dist/
+tokens/
+coverage/
+*.log
+.env
+web/node_modules/
+web/dist/

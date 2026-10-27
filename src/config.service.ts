@@ -41,6 +41,20 @@ export class WhatsappConfigService {
         )
     }
 
+    get session_name(): string {
+        return this.configService.get(
+            'WHATSAPP_SESSION_NAME',
+            'sessionName',
+        )
+    }
+
+    get auto_close(): number {
+        return Number(this.configService.get(
+            'WHATSAPP_AUTO_CLOSE',
+            0,
+        ))
+    }
+
     get mimetypes(): string[] | null {
         const types = this.configService.get('WHATSAPP_FILES_MIMETYPES', "")
         return types ? types.split(',') : null

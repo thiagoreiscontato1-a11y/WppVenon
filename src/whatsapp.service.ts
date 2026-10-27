@@ -1,8 +1,8 @@
-import {create, Message, Whatsapp} from "venom-bot";
-import {Inject, Injectable, Logger, OnApplicationShutdown} from "@nestjs/common";
-import {ConfigService} from "@nestjs/config";
+import {Message, Whatsapp} from "venom-bot";
+import {Injectable, Logger} from "@nestjs/common";
 import * as path from "path";
 import {WhatsappConfigService} from "./config.service";
+import {WhatsappSessionService} from "./session.service";
 import request = require('requestretry');
 import mime = require('mime-types');
 import fs = require('fs');
@@ -14,33 +14,6 @@ const writeFileAsync = promisify(fs.writeFile)
 
 
 const SECOND = 1000;
-
-export const whatsappProvider = {
-    provide: 'WHATSAPP',
-    useFactory: async (config: ConfigService) => create('sessionName',
-        (base64Qr, asciiQR) => {
-            console.log(asciiQR);
-        },
-        (statusFind) => {
-            console.log(statusFind);
-        },
-        {
-            headless: true,
-	    multidevice: true,
-            devtools: false,
-            //useChrome: true,
-            debug: false,
-            logQR: true,
-			//mkdirFolderToken: '',
-            browserArgs: [
-                    '--no-sandbox'
-                ],
-            autoClose: 60000,
-            //createPathFileToken: true,
-            //puppeteerOptions: {},
-        }
-    ),
-}
 
 const ONMESSAGE_HOOK = "onMessage"
 const HOOKS = [
@@ -56,7 +29,7 @@ const ENV_PREFIX = "WHATSAPP_HOOK_"
 
 
 @Injectable()
-export class WhatsappService implements OnApplicationShutdown {
+export class WhatsappService {
     // TODO: Use environment variables
     private RETRY_DELAY = 15
     private RETRY_ATTEMPTS = 3;
@@ -65,7 +38,7 @@ export class WhatsappService implements OnApplicationShutdown {
     readonly files_lifetime: number
 
     constructor(
-        @Inject('WHATSAPP') private whatsapp: Whatsapp,
+        private session: WhatsappSessionService,
         private config: WhatsappConfigService,
         private log: Logger,
     ) {
@@ -76,19 +49,27 @@ export class WhatsappService implements OnApplicationShutdown {
         this.mimetypes = this.config.mimetypes
         this.files_lifetime = this.config.files_lifetime * SECOND
 
+        this.session.onReady((client) => this.configureWebhooks(client))
+    }
+
+    private get whatsapp(): Whatsapp {
+        return this.session.client
+    }
+
+    private configureWebhooks(whatsapp: Whatsapp) {
         this.log.log('Configuring webhooks...')
         for (const hook of HOOKS) {
             const env_name = ENV_PREFIX + hook.toUpperCase()
-            const url = config.get(env_name)
+            const url = this.config.get(env_name)
             if (!url) {
                 this.log.log(`Hook '${hook}' is disabled. Set ${env_name} environment variable to url if you want to enabled it.`)
                 continue
             }
 
             if (hook === ONMESSAGE_HOOK) {
-                this.whatsapp[hook](data => this.onMessageHook(data, url))
+                whatsapp[hook](data => this.onMessageHook(data, url))
             } else {
-                this.whatsapp[hook](data => this.callWebhook(data, url))
+                whatsapp[hook](data => this.callWebhook(data, url))
             }
             this.log.log(`Hook '${hook}' was enabled to url: ${url}`)
         }
@@ -160,11 +141,6 @@ export class WhatsappService implements OnApplicationShutdown {
             this.removeFile(filePath)
             return message
         });
-    }
-
-    onApplicationShutdown(signal ?: string): any {
-        this.log.log('Close a browser...')
-        return this.whatsapp.close()
     }
 
     private removeFile(file: string) {

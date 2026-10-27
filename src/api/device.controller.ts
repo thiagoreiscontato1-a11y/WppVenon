@@ -1,12 +1,17 @@
-import {Controller, Get, Inject, Post} from '@nestjs/common';
+import {Controller, Get, Post} from '@nestjs/common';
 import {ApiTags} from "@nestjs/swagger";
 import {Whatsapp} from "venom-bot";
+import {WhatsappSessionService} from "../session.service";
 
 
 @Controller('api')
 @ApiTags('device')
 export class DeviceController {
-    constructor(@Inject('WHATSAPP') private whatsapp: Whatsapp) {
+    constructor(private session: WhatsappSessionService) {
+    }
+
+    private get whatsapp(): Whatsapp {
+        return this.session.client
     }
 
     @Post('/killServiceWorker')

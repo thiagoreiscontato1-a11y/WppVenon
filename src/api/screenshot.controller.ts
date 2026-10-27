@@ -1,6 +1,7 @@
-import {Controller, Get, Inject, Res} from '@nestjs/common';
+import {Controller, Get, Res} from '@nestjs/common';
 import {ApiTags} from "@nestjs/swagger";
 import {Whatsapp} from "venom-bot";
+import {WhatsappSessionService} from "../session.service";
 import {Readable} from "stream";
 import {Response} from 'express';
 
@@ -8,7 +9,11 @@ import {Response} from 'express';
 @Controller('api')
 @ApiTags('screenshot')
 export class ScreenshotController {
-    constructor(@Inject('WHATSAPP') private whatsapp: Whatsapp) {
+    constructor(private session: WhatsappSessionService) {
+    }
+
+    private get whatsapp(): Whatsapp {
+        return this.session.client
     }
 
     @Get('/screenshot')

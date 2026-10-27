@@ -1,4 +1,4 @@
-import {Body, Controller, Inject, NotImplementedException, Post} from '@nestjs/common';
+import {Body, Controller, NotImplementedException, Post} from '@nestjs/common';
 import {ApiOperation, ApiTags} from "@nestjs/swagger";
 import {
     Chat,
@@ -11,11 +11,16 @@ import {
     MessageText
 } from "./all.dto";
 import {Whatsapp} from "venom-bot";
+import {WhatsappSessionService} from "../session.service";
 
 @Controller('api')
 @ApiTags('chatting')
 export class ChattingController {
-    constructor(@Inject('WHATSAPP') private whatsapp: Whatsapp) {
+    constructor(private session: WhatsappSessionService) {
+    }
+
+    private get whatsapp(): Whatsapp {
+        return this.session.client
     }
 
     @Post('/sendContactVcard')
