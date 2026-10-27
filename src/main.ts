@@ -1,15 +1,30 @@
 import {NestFactory} from '@nestjs/core';
+import {NestExpressApplication} from "@nestjs/platform-express";
 import {AppModule} from './app.module';
 import {DocumentBuilder, SwaggerModule} from "@nestjs/swagger";
 import {WhatsappConfigService} from "./config.service";
+import {AuthService} from "./auth/auth.service";
+import {authMiddleware} from "./auth/auth.middleware";
 const fileUpload = require('express-fileupload');
+
+const MAX_UPLOAD_BYTES = 64 * 1024 * 1024
+
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, {
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
         logger: process.env.DEBUG != undefined ? ['log', 'debug', 'error', 'verbose', 'warn'] :
             ['log', 'error', 'warn'],
     });
-app.use(fileUpload({
-}))
+    const config = app.get(WhatsappConfigService);
+    app.disable('x-powered-by');
+    if (config.trust_proxy > 0) {
+        app.set('trust proxy', config.trust_proxy);
+    }
+    // Before everything else, so nothing (not even uploads) is processed without login
+    app.use(authMiddleware(app.get(AuthService)));
+    app.use(fileUpload({
+        limits: {fileSize: MAX_UPLOAD_BYTES},
+        abortOnLimit: true,
+    }))
     app.enableShutdownHooks();
     const options = new DocumentBuilder()
         .setTitle('WhatsApp venom API')
@@ -26,9 +41,8 @@ app.use(fileUpload({
         )
         .build();
     const document = SwaggerModule.createDocument(app, options);
-    SwaggerModule.setup('', app, document);
+    SwaggerModule.setup('docs', app, document);
 
-    const config = app.get(WhatsappConfigService);
     await app.listen(config.port);
     console.log(`WhatsApp HTTP API is running on: ${await app.getUrl()}`);
 }

@@ -5,9 +5,10 @@ interface Props {
   session: SessionState | null
   online: boolean
   onRestart: () => void
+  onLogout?: () => void
 }
 
-export function ConnectScreen({session, online, onRestart}: Props) {
+export function ConnectScreen({session, online, onRestart, onLogout}: Props) {
   const status = session?.status
   const canRestart = status === 'error' || status === 'disconnected'
 
@@ -22,6 +23,7 @@ export function ConnectScreen({session, online, onRestart}: Props) {
             <li>Toque em <b>Conectar um aparelho</b></li>
             <li>Aponte o celular para esta tela para escanear o QR code</li>
           </ol>
+          {onLogout && <button className="link-btn" onClick={onLogout}>Sair</button>}
         </div>
         <div className="connect-qr">
           {!online || !session ? (

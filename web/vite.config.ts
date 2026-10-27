@@ -11,7 +11,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {target: API_URL, changeOrigin: true},
+      // Keep the Host header: the API compares it with Origin (CSRF protection)
+      '/api': {target: API_URL, changeOrigin: false},
     },
   },
 })

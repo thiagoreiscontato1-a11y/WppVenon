@@ -10,6 +10,7 @@ interface Props {
   selectedId: string | null
   onSelect: (chatId: string) => void
   onReload: () => void
+  onLogout?: () => void
 }
 
 /** Accepts a phone number (with or without symbols) or a full WhatsApp id. */
@@ -20,7 +21,7 @@ function toChatId(input: string): string | null {
   return digits.length >= 8 ? `${digits}@c.us` : null
 }
 
-export function Sidebar({chats, lastMessage, selectedId, onSelect, onReload}: Props) {
+export function Sidebar({chats, lastMessage, selectedId, onSelect, onReload, onLogout}: Props) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [newChat, setNewChat] = useState<string | null>(null)
@@ -49,6 +50,7 @@ export function Sidebar({chats, lastMessage, selectedId, onSelect, onReload}: Pr
         <div className="header-actions">
           <button className="icon-btn" title="Nova conversa" onClick={() => setNewChat(newChat === null ? '' : null)}>✚</button>
           <button className="icon-btn" title="Recarregar conversas" onClick={onReload}>⟳</button>
+          {onLogout && <button className="icon-btn" title="Sair" onClick={onLogout}>⏻</button>}
         </div>
       </header>
 

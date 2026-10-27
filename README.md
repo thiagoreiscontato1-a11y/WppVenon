@@ -3,43 +3,84 @@
 ## Chat web (estilo WhatsApp Web)
 
 A pasta `web/` tem uma interface de chat (React + Vite) que conversa com esta API:
-QR code na tela, lista de conversas, histórico, envio de texto e arquivos e
+login, QR code na tela, lista de conversas, histórico, envio de texto e arquivos e
 atualização em tempo real (mensagens novas e confirmações de leitura).
 
-```bash
-# 1. API (raiz do projeto)
-npm install
-npm start                 # http://localhost:3000 (Swagger)
+A sessão do WhatsApp sobe em segundo plano: a API responde imediatamente e o QR
+aparece na interface (e continua no terminal).
 
-# 2. Interface, em modo desenvolvimento (outro terminal)
+### Deploy (Railway, Render, VPS...)
+
+> **Não funciona na Vercel** (nem em outro serviço *serverless*): o venom mantém um
+> Chrome aberto o tempo todo segurando a sessão do WhatsApp, e funções serverless são
+> encerradas segundos depois de cada requisição. Use um serviço que rode um container
+> continuamente.
+
+O projeto tem um `Dockerfile` pronto (API + interface + Chromium). No **Railway**:
+
+1. *New Project → Deploy from GitHub repo* e escolha este repositório/branch.
+2. Em *Variables*, configure pelo menos `ADMIN_USER`, `ADMIN_PASSWORD` e `SESSION_SECRET` (tabela abaixo).
+3. Em *Settings → Volumes*, adicione um volume montado em **`/app/tokens`**
+   (guarda a sessão do WhatsApp; sem ele é preciso escanear o QR a cada deploy).
+4. Em *Settings → Networking*, gere um domínio público e abra `https://SEU-DOMINIO/`.
+
+### Variáveis de ambiente
+
+| Variável | Obrigatória | Descrição |
+| -------- | ----------- | --------- |
+| `ADMIN_PASSWORD` | **sim** | Senha de acesso, mínimo 12 caracteres. Sem ela a API não sobe. |
+| `ADMIN_USER` | não | Usuário (padrão `admin`). |
+| `SESSION_SECRET` | recomendada | Chave aleatória longa que assina os cookies de login. Sem ela, todos são deslogados a cada reinício. Gere com `openssl rand -hex 32` ou um gerador de senhas. |
+| `SESSION_TTL_HOURS` | não | Duração do login em horas (padrão `12`). |
+| `API_TOKEN` | não | Token (mín. 32 caracteres) para scripts/integrações, enviado no cabeçalho `X-VENOM-TOKEN` ou `Authorization: Bearer`. |
+| `TRUST_PROXY` | não | Quantos proxies existem na frente da API (o Dockerfile já define `1`, correto para Railway/Render). |
+| `AUTH_DISABLED` | não | `true` desliga o login. **Somente para desenvolvimento local.** |
+| `WHATSAPP_SESSION_NAME` | não | Nome da sessão do venom (padrão `sessionName`). |
+| `WHATSAPP_AUTO_CLOSE` | não | ms até desistir de esperar o QR; padrão `0` = nunca. |
+| `PORT` / `WHATSAPP_API_PORT` | não | Porta HTTP (padrão `3000`). |
+
+### Segurança
+
+- Tudo exige login: API, arquivos, eventos em tempo real e a documentação Swagger (`/docs`).
+- Sessão em cookie assinado (HMAC-SHA256), `HttpOnly`, `Secure` (em HTTPS) e `SameSite=Strict`.
+- Bloqueio por força bruta: 10 tentativas erradas por IP (ou 100 no total) bloqueiam o login por 15 minutos.
+- Requisições de outros sites são recusadas (proteção CSRF por `Origin`), e há cabeçalhos
+  de segurança (CSP, HSTS, `X-Frame-Options`...).
+- Para trocar a senha, altere `ADMIN_PASSWORD`. Para deslogar todo mundo, troque `SESSION_SECRET`.
+
+### Rodando localmente
+
+```bash
+# 1. API (raiz do projeto). Crie um arquivo .env com, por exemplo:
+#    ADMIN_USER=admin
+#    ADMIN_PASSWORD=uma-senha-com-12+-caracteres
+npm install
+npm start                 # http://localhost:3000 (Swagger em /docs)
+
+# 2. Interface em modo desenvolvimento (outro terminal)
 npm run web:install
 npm run web:dev           # http://localhost:5173/app/
 ```
 
-Para usar sem o servidor do Vite: `npm run web:build` e abra http://localhost:3000/app/
-(a própria API serve o build).
+Ou `npm run web:build` e abra http://localhost:3000/ (a própria API serve a interface em `/app`).
 
-A sessão do WhatsApp agora sobe em segundo plano: a API responde imediatamente e o QR
-aparece na interface (e continua no terminal).
+### Endpoints
 
-Endpoints usados pela interface (ids completos: `5511999999999@c.us` ou `...@g.us` para grupos):
+Ids completos: `5511999999999@c.us` para contatos ou `...@g.us` para grupos.
 
 | Método | Rota | Descrição |
 | ------ | ---- | --------- |
-| GET | `/api/session` | Status da sessão e QR code |
+| POST | `/api/auth/login` | Login `{username, password}` (define o cookie de sessão) |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/auth/me` | Quem está logado |
+| GET | `/api/session` | Status da sessão do WhatsApp e QR code |
 | POST | `/api/session/restart` | Reinicia a sessão após erro/desconexão |
 | GET | `/api/events` | Server-Sent Events: `status`, `message`, `ack` |
 | GET | `/api/chats` | Conversas, mais recentes primeiro |
 | GET | `/api/chats/:chatId/messages` | Mensagens carregadas da conversa |
 | POST | `/api/chats/:chatId/messages` | Envia texto `{text, replyTo?}` |
-| POST | `/api/chats/:chatId/files` | Envia arquivo (multipart, campo `file`, `caption` opcional) |
+| POST | `/api/chats/:chatId/files` | Envia arquivo (multipart, campo `file`, `caption` opcional; até 64 MB) |
 | POST | `/api/chats/:chatId/seen` | Marca como lida |
-
-Variáveis de ambiente novas: `WHATSAPP_SESSION_NAME` (padrão `sessionName`) e
-`WHATSAPP_AUTO_CLOSE` (ms até desistir de esperar o QR; padrão `0` = nunca).
-
-> ⚠️ A API não tem autenticação: qualquer pessoa que alcance a porta 3000 pode ler e
-> enviar mensagens. Mantenha-a apenas em `localhost`/rede interna até adicionarmos login.
 
 WhatsApp venom API that you can configure in a click! It's really Free! :)
 
@@ -76,7 +117,7 @@ bari ke 33 dari '/tmp/whatsapp-files',
 Run WhatsApp venom API:
 
 After that open in a browser the link and you'll see Swagger (OpenApi) API specification for WhatsApp venom API
-http://localhost:3000/#/
+http://localhost:3000/docs
 
 ## Send a text message
 
@@ -84,6 +125,7 @@ Let's try to send a message:
 1. via curl
 
 curl --location --request POST 'http://localhost:3000/api/send-message' \
+--header 'X-VENOM-TOKEN: <API_TOKEN>' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "number": "6281224993382",
@@ -91,13 +133,13 @@ curl --location --request POST 'http://localhost:3000/api/send-message' \
 }'
 
 2. swagger
-open browser http://localhost:3000/
+open browser http://localhost:3000/docs
 ![image](https://user-images.githubusercontent.com/25816482/126971406-dc142e75-8480-413f-b96c-c80a3e64bcbe.png)
 
 
 ## Get a screenshot
 
-Go to the "screenshot" section and get a screenshot http://localhost:3000/#/screenshot
+Go to the "screenshot" section and get a screenshot http://localhost:3000/docs#/screenshot
 ![image](https://user-images.githubusercontent.com/25816482/126974407-24d35d18-a2f7-4262-aae0-6e68b293bfa1.png)
 
 

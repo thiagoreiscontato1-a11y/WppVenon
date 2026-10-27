@@ -5,6 +5,8 @@ import {WhatsappService} from "./whatsapp.service";
 import {WhatsappSessionService} from "./session.service";
 import {WebController} from "./api/web.controller";
 import * as path from "path";
+import {AuthService} from "./auth/auth.service";
+import {AuthController} from "./auth/auth.controller";
 import {ScreenshotController} from "./api/screenshot.controller";
 import {ConfigModule} from "@nestjs/config";
 import {WhatsappConfigService} from "./config.service";
@@ -32,8 +34,8 @@ import {ServeStaticModule} from "@nestjs/serve-static";
             },
         }),
     ],
-    controllers: [ChattingController, DeviceController, ScreenshotController, WebController],
-    providers: [WhatsappSessionService, WhatsappService, Logger, WhatsappConfigService],
+    controllers: [AuthController, ChattingController, DeviceController, ScreenshotController, WebController],
+    providers: [AuthService, WhatsappSessionService, WhatsappService, Logger, WhatsappConfigService],
 })
 export class AppModule {
 }

@@ -141,6 +141,45 @@ input, textarea { font: inherit; color: var(--text); }
 }
 .status-box small { color: var(--text-muted); word-break: break-word; }
 
+/* ---------- Login ---------- */
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: 0 17px 50px 0 rgba(11, 20, 26, 0.19);
+  padding: 36px 32px;
+}
+.login-card h1 { margin: 0; font-weight: 300; font-size: 28px; }
+.login-card p { margin: -8px 0 4px; }
+.login-card label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.login-card input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  font-size: 15px;
+  outline: none;
+}
+.login-card input:focus { border-color: var(--accent); }
+.login-card .btn-primary { padding: 11px; margin-top: 4px; }
+.login-error, .login-notice { border-radius: 6px; padding: 10px 12px; font-size: 13.5px; }
+.login-error { background: #fde7ea; color: #b00020; }
+.login-notice { background: #fff4d6; color: #6b5300; }
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-top: 24px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ---------- Main layout ---------- */
 
 .app {
@@ -450,6 +489,7 @@ input, textarea { font: inherit; color: var(--text); }
   .composer { padding: 5px 8px; }
 
   .connect { background: var(--panel); padding: 16px; }
+  .login-card { box-shadow: none; padding: 24px 0; }
   .connect-card { flex-direction: column-reverse; gap: 24px; padding: 24px 16px; box-shadow: none; }
   .connect-text h1 { font-size: 22px; margin-bottom: 12px; }
   .connect-text ol { font-size: 15px; line-height: 1.8; }
